@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.cache import cache_page
 
 from .forms import PostForm, CommentForm
-from .models import Group, Post, User
+from .models import Group, Post, User, Follow
 
 
 @cache_page(20, key_prefix='index_page')
@@ -27,16 +27,19 @@ def group_posts(request, slug):
 
 def profile(request, username):
     author = get_object_or_404(User, username=username)
+    user = request.user
     user_posts = author.posts.all()
     paginator = Paginator(user_posts, 10)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
     user_post_count = user_posts.count()
-
+    following = user.is_authenticated and (
+        Follow.objects.filter(user=user, author=author).exists())
     context = {
         'author': author,
         'page': page,
         'count': user_post_count,
+        'following': following
     }
     return render(
         request,
@@ -119,3 +122,31 @@ def add_comment(request, username, post_id):
     return render(request, 'includes/comments.html',
                   {'form': form, 'comments': comments, 'post': post})
 
+
+@login_required
+def follow_index(request):
+    user = request.user
+    post_list = Post.objects.filter(author__following__user=user)
+    paginator = Paginator(post_list, 10)
+    page_number = request.GET.get('page')
+    page = paginator.get_page(page_number)
+    return render(request, 'follow.html', {'page': page})
+
+
+@login_required
+def profile_follow(request, username):
+    author = get_object_or_404(User, username=username)
+    if author != request.user:
+        Follow.objects.get_or_create(author=author, user=request.user)
+        return redirect('index')
+    return redirect('profile', username=username)
+
+
+@login_required
+def profile_unfollow(request, username):
+    author = get_object_or_404(User, username=username)
+    user = request.user
+    if author != user:
+        Follow.objects.filter(author=author, user=request.user).delete()
+        return redirect('profile', username=username)
+    redirect('profile', username=username)
