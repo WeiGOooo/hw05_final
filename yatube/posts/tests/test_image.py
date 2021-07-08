@@ -40,7 +40,7 @@ class TestPostImageFormTests(TestCase):
             'group.html': reverse('group_posts', kwargs={
                 'slug': cls.group.slug}),
             'profile.html': reverse('profile', kwargs={
-                'username':  cls.user.username}),
+                'username': cls.user.username}),
             'post.html': reverse('post', kwargs={
                 'username': cls.user.username,
                 'post_id': cls.post.id,
