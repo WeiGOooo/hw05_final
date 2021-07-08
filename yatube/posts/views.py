@@ -88,7 +88,8 @@ def post_edit(request, username, post_id):
                     instance=post_item)
     if not form.is_valid():
         return render(request, 'new_post.html',
-                      {'form': form, 'switch': 'edit'})
+                      {'form': form, 'switch': 'edit',
+                       'post': post_item})
     form.save()
     return redirect('post', username=username, post_id=post_id)
 
