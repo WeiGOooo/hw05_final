@@ -2,12 +2,12 @@ import shutil
 import tempfile
 
 from django.conf import settings
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
-from django.core.cache import cache
 
-from ..models import Post, Group, User
+from ..models import Group, Post, User
 
 TEMP_MEDIA = tempfile.mkdtemp(dir=settings.BASE_DIR)
 

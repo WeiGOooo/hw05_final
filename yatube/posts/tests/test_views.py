@@ -1,10 +1,10 @@
 from django import forms
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import Client, TestCase
 from django.urls import reverse
-from django.core.cache import cache
 
-from ..models import Group, Post
+from ..models import Follow, Group, Post
 
 User = get_user_model()
 
@@ -160,3 +160,79 @@ class Cache(TestCase):
         response = self.authorized_client.get(reverse('index'))
         self.assertNotEqual(response.context, None)
         self.assertEqual(response.context['page'][0].text, 'Тестовый пост')
+
+
+class TestFollow(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='TestUser')
+        cls.group = Group.objects.create(title='TestGroup',
+                                         slug='test_slug',
+                                         description='Test description')
+        cls.follow_user = User.objects.create_user(username='TestAuthor')
+
+    def setUp(self):
+        self.authorized_user = Client()
+        self.authorized_user.force_login(self.follow_user)
+
+    def test_follow(self):
+        self.authorized_user.get(reverse('profile_follow',
+                                 kwargs={'username': self.user.username}))
+        follow = Follow.objects.first()
+        self.assertEqual(Follow.objects.count(), 1)
+        self.assertEqual(follow.author, self.user)
+        self.assertEqual(follow.user, self.follow_user)
+
+    def test_unfollow(self):
+        self.authorized_user.get(reverse('profile_follow',
+                                 kwargs={'username': self.user.username}))
+        self.authorized_user.get(reverse('profile_unfollow',
+                                         kwargs={
+                                             'username': self.user.username}))
+        self.assertFalse(Follow.objects.exists())
+
+    def test_follow_index(self):
+        Post.objects.create(author=self.user, text='Тестовый текст вот так',
+                            group=self.group)
+        self.authorized_user.get(reverse('profile_follow',
+                                         kwargs={
+                                             'username': self.user.username}))
+        response = self.authorized_user.get(reverse('follow_index'))
+        post = response.context['post']
+        self.assertEqual(post.text, 'Тестовый текст вот так')
+        self.assertEqual(post.author, self.user)
+        self.assertEqual(post.group.id, self.group.id)
+
+    def test_unfollow_index(self):
+        Post.objects.create(author=self.user, text='Тестовый текст вот так',
+                            group=self.group)
+        response = self.authorized_user.get(reverse('follow_index'))
+        self.assertEqual(response.context['paginator'].count, 0)
+
+
+class TestComments(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='TestUser')
+        cls.comment_user = User.objects.create_user(username='TestCommentUser')
+        cls.post = Post.objects.create(text='test text', author=cls.user)
+        cls.url_comment = reverse('add_comment', kwargs={
+            'username': cls.post.author.username, 'post_id': cls.post.id})
+
+    def setUp(self):
+        self.anonymous = Client()
+        self.authorized_user = Client()
+        self.authorized_user.force_login(self.comment_user)
+
+    def test_anonymous_client_not_comment(self):
+        response = self.anonymous.get(self.url_comment)
+        urls = '/auth/login/?next={}'.format(self.url_comment)
+        self.assertRedirects(response, urls, status_code=302)
+
+    def test_authorized_user_can_comment(self):
+        response = self.authorized_user.post(self.url_comment,
+                                             {'text': 'Тестовый коммент'},
+                                             follow=True)
+        self.assertContains(response, 'Тестовый коммент')

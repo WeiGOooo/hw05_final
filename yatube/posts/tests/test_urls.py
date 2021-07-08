@@ -1,7 +1,8 @@
+from django.core.cache import cache
 from django.test import Client, TestCase
 from django.urls import reverse
+
 from ..models import Group, Post, User
-from django.core.cache import cache
 
 
 class TaskURLTests(TestCase):

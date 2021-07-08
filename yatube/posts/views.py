@@ -3,8 +3,8 @@ from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.cache import cache_page
 
-from .forms import PostForm, CommentForm
-from .models import Group, Post, User, Follow
+from .forms import CommentForm, PostForm
+from .models import Follow, Group, Post, User
 
 
 @cache_page(20, key_prefix='index_page')
@@ -130,7 +130,9 @@ def follow_index(request):
     paginator = Paginator(post_list, 10)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
-    return render(request, 'follow.html', {'page': page})
+    return render(request, 'follow.html', {'page': page,
+                                           'paginator': paginator,
+                                           })
 
 
 @login_required
@@ -138,7 +140,6 @@ def profile_follow(request, username):
     author = get_object_or_404(User, username=username)
     if author != request.user:
         Follow.objects.get_or_create(author=author, user=request.user)
-        return redirect('index')
     return redirect('profile', username=username)
 
 
@@ -148,5 +149,4 @@ def profile_unfollow(request, username):
     user = request.user
     if author != user:
         Follow.objects.filter(author=author, user=request.user).delete()
-        return redirect('profile', username=username)
-    redirect('profile', username=username)
+    return redirect('profile', username=username)
