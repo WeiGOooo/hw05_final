@@ -2,6 +2,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.cache import cache_page
+from django.conf import settings
 
 from .forms import CommentForm, PostForm
 from .models import Follow, Group, Post, User
@@ -10,7 +11,7 @@ from .models import Follow, Group, Post, User
 @cache_page(20, key_prefix='index_page')
 def index(request):
     post_list = Post.objects.all()
-    paginator = Paginator(post_list, 10)
+    paginator = Paginator(post_list, settings.QUANTITY_PAGE)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
     return render(request, 'index.html', {'page': page, })
@@ -19,7 +20,7 @@ def index(request):
 def group_posts(request, slug):
     group = get_object_or_404(Group, slug=slug)
     posts = group.posts.all()
-    paginator = Paginator(posts, 10)
+    paginator = Paginator(posts, settings.QUANTITY_PAGE)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
     return render(request, 'group.html', {'page': page, 'group': group, })
@@ -29,7 +30,7 @@ def profile(request, username):
     author = get_object_or_404(User, username=username)
     user = request.user
     user_posts = author.posts.all()
-    paginator = Paginator(user_posts, 10)
+    paginator = Paginator(user_posts, settings.QUANTITY_PAGE)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
     user_post_count = user_posts.count()
@@ -51,8 +52,8 @@ def profile(request, username):
 def post_view(request, username, post_id):
     post = get_object_or_404(Post.objects.select_related('author'),
                              id=post_id, author__username=username)
-    form = CommentForm(instance=None)
-    comments = post.post_comments.all()
+    form = CommentForm()
+    comments = post.comments.all()
     context = {
         'post': post,
         'author': post.author,
@@ -110,7 +111,7 @@ def server_error(request):
 @login_required
 def add_comment(request, username, post_id):
     post = get_object_or_404(Post, author__username=username, id=post_id)
-    comments = post.post_comments.all()
+    comments = post.comments.all()
     form = CommentForm(
         request.POST or None)
     if form.is_valid():
@@ -128,7 +129,7 @@ def add_comment(request, username, post_id):
 def follow_index(request):
     user = request.user
     post_list = Post.objects.filter(author__following__user=user)
-    paginator = Paginator(post_list, 10)
+    paginator = Paginator(post_list, settings.QUANTITY_PAGE)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
     return render(request, 'follow.html', {'page': page,

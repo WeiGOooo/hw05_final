@@ -195,9 +195,7 @@ class TestFollow(TestCase):
     def test_follow_index(self):
         Post.objects.create(author=self.user, text='Тестовый текст вот так',
                             group=self.group)
-        self.authorized_user.get(reverse('profile_follow',
-                                         kwargs={
-                                             'username': self.user.username}))
+        Follow.objects.create(user=self.follow_user, author=self.user)
         response = self.authorized_user.get(reverse('follow_index'))
         post = response.context['post']
         self.assertEqual(post.text, 'Тестовый текст вот так')

@@ -142,3 +142,4 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
     }
 }
+QUANTITY_PAGE = 10
